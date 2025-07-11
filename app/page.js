@@ -95,7 +95,7 @@ export default function Home() {
     };
 
     fetchUserGameData();
-  }, [user, ingredientsLoaded, gameOver]);
+  }, [user, ingredientsLoaded, gameOver, skipResultLoad]);
 
   // ── Game Init ─────────────────────────────────────────────────────────────
 
@@ -130,7 +130,15 @@ export default function Home() {
     };
 
     if (!ingredientsLoaded) fetchDailyGame();
-  }, [ingredientsLoaded]);
+  }, [
+    ingredientsLoaded,
+    setPrompt,
+    setCorrectIngredients,
+    setIngredients,
+    setIngredientsLoaded,
+    setTextMessage,
+    shuffleArray,
+  ]);
 
   useEffect(() => {
     if (!gameOver || !user || skipResultLoad) return;
@@ -166,7 +174,16 @@ export default function Home() {
     };
 
     saveResults();
-  }, [gameOver]);
+  }, [
+    gameOver,
+    user,
+    skipResultLoad,
+    gameWin,
+    guessData,
+    emojiResults,
+    correctIngredients,
+    setTextMessage,
+  ]);
 
   // ── Header Anim Space ─────────────────────────────────────────────────────
 
