@@ -25,6 +25,7 @@ export default function Home() {
   const [ingredientsLoaded, setIngredientsLoaded] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
   const [correctIngredients, setCorrectIngredients] = useState([]);
+  const [skipResultLoad, setSkipResultLoad] = useState(false);
 
   const [textMessage, setTextMessage] = useState(null);
   const [flashKey, setFlashKey] = useState(0);
@@ -64,6 +65,38 @@ export default function Home() {
     return () => listener.subscription.unsubscribe();
   }, [setUser]);
 
+  useEffect(() => {
+    const fetchUserGameData = async () => {
+      if (!user || gameOver || !ingredientsLoaded || skipResultLoad) return;
+
+      const today = new Date().toISOString().slice(0, 10);
+
+      const { data, error } = await supabaseClient
+        .from("user_data")
+        .select("results")
+        .eq("user_id", user.id)
+        .eq("date", today)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Failed to fetch user game data:", error.message);
+        return;
+      }
+
+      if (data?.results) {
+        const { won, guesses, emojiResults, correct } = data.results;
+
+        setGameWin(won);
+        setGameOver(true);
+        setGuessData(guesses || []);
+        setEmojiResults(emojiResults || []);
+        setCorrectIngredients(correct || []);
+      }
+    };
+
+    fetchUserGameData();
+  }, [user, ingredientsLoaded, gameOver]);
+
   // ── Game Init ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -100,12 +133,39 @@ export default function Home() {
   }, [ingredientsLoaded]);
 
   useEffect(() => {
-    if(user) {
-      // Save results to user's database.
-    } else {
-      // Store results in case user signs in.
-      // Otherwise, save to local storage?
-    }
+    if (!gameOver || !user || skipResultLoad) return;
+
+    const saveResults = async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const userId = user.id;
+
+      const gameResult = {
+        won: gameWin,
+        guesses: guessData,
+        emojiResults,
+        correct: correctIngredients,
+      };
+
+      const { error } = await supabaseClient.from("user_data").upsert(
+        {
+          user_id: userId,
+          date: today,
+          results: gameResult,
+        },
+        {
+          onConflict: ["user_id", "date"],
+        }
+      );
+
+      if (error) {
+        console.error("Error saving game result:", error.message);
+        setTextMessage("Failed to save your result.");
+      } else {
+        console.log("✅ Game result saved.");
+      }
+    };
+
+    saveResults();
   }, [gameOver]);
 
   // ── Header Anim Space ─────────────────────────────────────────────────────
@@ -120,8 +180,13 @@ export default function Home() {
 
   const signInWithGoogle = () =>
     supabaseClient.auth.signInWithOAuth({ provider: "google" });
+
+  // ── Dev Actions ───────────────────────────────────────────────────────────
+
   const resetGame = () => window.location.reload();
   const winGame = () => submitAnswer({ autoWin: true });
+
+  // ── Interactivity ─────────────────────────────────────────────────────────
 
   const toggleItem = (item) =>
     setSelectedItems((prev) =>
@@ -206,6 +271,20 @@ export default function Home() {
     }
   };
 
+  const playAgain = () => {
+    setSkipResultLoad(true); // prevent loading saved result
+    setGameOver(false);
+    setGameWin(null);
+    setGuessesRemaining(INITIAL_GUESSES);
+    setGuessData([]);
+    setEmojiResults([]);
+    setSelectedItems([]);
+    setTextMessage(null);
+    setFeedbackMap({});
+    setExpandedResults(false);
+    setIngredientsLoaded(false); // triggers re-fetch of daily puzzle
+  };
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -265,14 +344,14 @@ export default function Home() {
               transition={{ duration: 0.5, ease: "circOut" }}
             >
               {gameWin && (
-                <div className="mb-4 rounded-lg p-[1px] bg-gradient-to-bl from-[#a4ccff] to-[#d7acfc]">
+                <div className="mb-4 rounded-lg p-[1px] bg-gradient-to-bl from-[#a4ccff] to-[#68c0de]">
                   <div className="font-mono text-center text-blue-200 bg-neutral-950 rounded-lg p-4 leading-5">
                     Nicely done! 😁
                   </div>
                 </div>
               )}
               {!gameWin && (
-                <div className="mb-4 rounded-lg p-[1px] bg-gradient-to-bl from-[#f0d1ff] to-[#80c7bf]">
+                <div className="mb-4 rounded-lg p-[1px] bg-gradient-to-bl from-[#ffd1d1] to-[#e7ba78]">
                   <div className="font-mono text-center text-red-200 bg-neutral-950 rounded-lg p-4 leading-5">
                     Better luck next time! 🙁
                   </div>
@@ -301,6 +380,17 @@ export default function Home() {
                       "\n"
                     )}`}
                   />
+                  {user && (
+                    <button className="px-4 py-4 mt-2 w-full border border-neutral-800 rounded-lg bg-background text-xs text-neutral-300 hover:font-bold transition-all duration-100">
+                      View Previous Results
+                    </button>
+                  )}
+                  <button
+                    className="px-4 py-4 mt-2 w-full border border-neutral-800 rounded-lg bg-background text-xs text-neutral-300 hover:font-bold transition-all duration-100"
+                    onClick={playAgain}
+                  >
+                    Play Again
+                  </button>
                 </div>
               )}
 
@@ -392,7 +482,8 @@ export default function Home() {
                     textMessage ? "flash-text" : ""
                   }`}
                 >
-                  {textMessage || "FIND THE FOUR VALID INGREDIENTS IN THREE GUESSES."}
+                  {textMessage ||
+                    "FIND THE FOUR VALID INGREDIENTS IN THREE GUESSES."}
                 </div>
 
                 <div className="flex flex-col items-center gap-1 text-xs font-mono">
