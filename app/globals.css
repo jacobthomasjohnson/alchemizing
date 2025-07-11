@@ -1,26 +1,70 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --font-inter: "Inter";
+  --font-firacode: "Fira Code";
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: var(--font-firacode);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  user-select: none;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+.word-container {
+  animation-name: word-container-animation;
+  animation-duration: 5s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-fill-mode: forwards;
+
+  background: linear-gradient(to top right, #f0d1ff, #80c7bf);
+}
+
+@keyframes word-container-animation {
+  0% {
+    box-shadow: 0px 0px 2px #f0d1ff;
+  }
+  25% {
+    box-shadow: 0px 0px 1px #dbfbff;
+  }
+  50% {
+    box-shadow: 0px 0px 2px #d3d3d3;
+  }
+  75% {
+    box-shadow: 0px 0px 1px #d2ddff;
+  }
+  100% {
+    box-shadow: 0px 0px 2px #e1ffd9;
+  }
+}
+
+.flash-text {
+  animation-name: flash-text-animation;
+  animation-timing-function: ease-out;
+  animation-duration: 3s;
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+}
+
+@keyframes flash-text-animation {
+  0% {
+    color: #ff8484;
+  }
+
+  100% {
+    color: #ffffff;
+  }
 }
